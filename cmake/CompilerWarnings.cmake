@@ -1,12 +1,12 @@
 # from here:
 #
 # https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Avai
-# lable.md
-# Courtesy of Jason Turner
+# lable.md Courtesy of Jason Turner
 
-function(set_project_warnings project_name)
+# !这份东西应该是全局的，不用每次都进去设置一次。可以加个宏过滤一下？
+if(NOT PROJECT_WARNINGS)
   set(MSVC_WARNINGS
-      /W4     # Baseline reasonable warnings
+      /W4 # Baseline reasonable warnings
       /w14242 # 'identifier': conversion from 'type1' to 'type1', possible loss
               # of data
       /w14254 # 'operator': conversion from 'type1:field_bits' to
@@ -41,27 +41,29 @@ function(set_project_warnings project_name)
 
   set(CLANG_WARNINGS
       -Wall
-      -Wextra  # reasonable and standard
+      -Wextra # reasonable and standard
       -Wshadow # warn the user if a variable declaration shadows one from a
                # parent context
       -Wnon-virtual-dtor # warn the user if a class with virtual functions has a
                          # non-virtual destructor. This helps catch hard to
                          # track down memory errors
       -Wold-style-cast # warn for c-style casts
-      -Wcast-align     # warn for potential performance problem casts
-      -Wunused         # warn on anything being unused
+      -Wcast-align # warn for potential performance problem casts
+      -Wunused # warn on anything being unused
       -Woverloaded-virtual # warn if you overload (not override) a virtual
                            # function
-      -Wpedantic   # warn if non-standard C++ is used
+      -Wpedantic # warn if non-standard C++ is used
       -Wconversion # warn on type conversions that may lose data
-      -Wsign-conversion  # warn on sign conversions
+      -Wsign-conversion # warn on sign conversions
       -Wnull-dereference # warn if a null dereference is detected
       -Wdouble-promotion # warn if float is implicit promoted to double
       -Wformat=2 # warn on security issues around functions that format output
                  # (ie printf)
   )
 
-  if (${PROJECT_NAME}_WARNINGS_AS_ERRORS)
+  # NOREFLOW
+  # !第一次是在项目的主CMakeLists.txt里调用，故而PROJECT_NAME一定是项目的，能拿到配置
+  if(${PROJECT_NAME}_WARNINGS_AS_ERRORS)
     set(CLANG_WARNINGS ${CLANG_WARNINGS} -Werror)
     set(MSVC_WARNINGS ${MSVC_WARNINGS} /WX)
   endif()
@@ -72,8 +74,8 @@ function(set_project_warnings project_name)
                                # do not exist
       -Wduplicated-cond # warn if if / else chain has duplicated conditions
       -Wduplicated-branches # warn if if / else branches have duplicated code
-      -Wlogical-op   # warn about logical operations being used where bitwise were
-                     # probably wanted
+      -Wlogical-op # warn about logical operations being used where bitwise were
+                   # probably wanted
       -Wuseless-cast # warn if you perform a cast to the same type
   )
 
@@ -84,16 +86,46 @@ function(set_project_warnings project_name)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(PROJECT_WARNINGS ${GCC_WARNINGS})
   else()
-    message(AUTHOR_WARNING "No compiler warnings set for '${CMAKE_CXX_COMPILER_ID}' compiler.")
+    message(
+      AUTHOR_WARNING
+        "No compiler warnings set for '${CMAKE_CXX_COMPILER_ID}' compiler."
+    )
   endif()
+endif()
+# TODO 还需要确认如果作为子项目add_subdirectory后，是否会影响其父项目或者平行级的子项目
 
-  if(${PROJECT_NAME}_BUILD_HEADERS_ONLY)
-        target_compile_options(${project_name} INTERFACE ${PROJECT_WARNINGS})
-  else()
-        target_compile_options(${project_name} PUBLIC ${PROJECT_WARNINGS})
-  endif()
-
+function(set_project_warnings project_name)
   if(NOT TARGET ${project_name})
-    message(AUTHOR_WARNING "${project_name} is not a target, thus no compiler warning were added.")
+    message(
+      AUTHOR_WARNING
+        "${project_name} is not a target, thus no compiler warning were added."
+    )
+    return()
   endif()
+
+  if(NOT ${USER_PROJECT_NAME} STREQUAL ${project_name})
+    # NOREFLOW
+    # ! 单元测试项目覆盖了用户核心项目
+    # ! 设置配置测试用告警
+    target_compile_options(${project_name} PRIVATE ${PROJECT_WARNINGS})
+
+    return()
+  endif()
+
+  if(${project_name}_BUILD_HEADERS_ONLY)
+    # !头文件INTERFACE库（无编译产物）
+
+    # target_compile_options(${project_name} INTERFACE ${PROJECT_WARNINGS})
+
+    return()
+  endif()
+
+  # ! 普通库
+  target_compile_options(${project_name} PRIVATE ${PROJECT_WARNINGS})
+
+  if(${project_name}_BUILD_EXECUTABLE)
+    # ! 可执行程序
+    target_compile_options(${project_name}_EXE PRIVATE ${PROJECT_WARNINGS})
+  endif()
+
 endfunction()

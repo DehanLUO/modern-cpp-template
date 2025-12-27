@@ -3,14 +3,13 @@ set(sources
 )
 
 set(exe_sources
-		src/main.cpp
-		${sources}
+    src/main.cpp
 )
 
 set(headers
-    include/project/tmp.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/include/version.hpp include/tmp.hpp
 )
 
 set(test_sources
-  src/tmp_test.cpp
+    src/tmp_test.cpp
 )
