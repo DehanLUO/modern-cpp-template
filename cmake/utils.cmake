@@ -4,18 +4,15 @@
 # Conditionally outputs a status message to the CMake console when verbose
 # logging mode is enabled for the project.
 #
-# Parameters:
-#   content : String message to display (required)
-#
 # The message will be prefixed with CMake's STATUS indicator (typically "-- ").
-function(verbose_message content)
+function(verbose_message)
   # Early Exit Condition: Verbose Mode Disabled
   if(NOT ${project_name_copy}_VERBOSE_OUTPUT)
     return() # Silent exit: no message generated
   endif()
 
   # Message Emission
-  message(STATUS ${content})
+  message(STATUS ${ARGN})
 endfunction()
 
 # ------------------------------------------------------------------------------
