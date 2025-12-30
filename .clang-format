@@ -1,24 +1,18 @@
 ---
-BasedOnStyle: Google
-AlignAfterOpenBracket: 'AlwaysBreak'
-AllowAllConstructorInitializersOnNextLine: 'false'
-AllowAllParametersOfDeclarationOnNextLine: 'false'
-AlignConsecutiveMacros: 'true'
-AllowShortCaseLabelsOnASingleLine: 'true'
-AllowShortFunctionsOnASingleLine: 'None'
-AllowShortIfStatementsOnASingleLine: 'Never'
-AllowShortLoopsOnASingleLine: 'false'
-BreakBeforeBraces: Allman
-BinPackArguments: 'false'
-BinPackParameters: 'false'
-Cpp11BracedListStyle: 'false'
-ColumnLimit: 125 
-NamespaceIndentation: All
-SpaceAfterTemplateKeyword: 'false'
-SpaceBeforeCtorInitializerColon: 'true'
-SpaceBeforeInheritanceColon: 'true'
-SpaceBeforeParens: ControlStatements
-SpaceBeforeRangeBasedForLoopColon: 'true'
-SpaceInEmptyBlock: true
-Standard: 'Latest'
+Language:        Cpp                    # Specifies that this format applies to C++ files only
+BasedOnStyle:    Google                 # Uses Google C++ style as the base formatting style
+AccessModifierOffset: -2                # Indents access specifiers (public, protected, private) 2 spaces less, aligning them with the class body
+Standard:        c++20                  # Targets the C++20 standard for code compatibility
+IndentWidth:     2                      # Sets the indentation width to 2 spaces
+TabWidth:        2                      # Sets the width of a tab character equivalent to 2 spaces
+UseTab:          Never                  # Disables tabs; uses spaces exclusively for indentation
+ColumnLimit:     100                    # Sets a column limit of 100 characters per line
+AlignAfterOpenBracket: Align            # Aligns parameters to the open bracket on a new line if wrapped
+BinPackParameters: false                # Prevents multiple parameters from being packed into a single line; each occupies its own line
+AlignEscapedNewlines: Left              # Aligns escaped newlines (e.g., `\`) to the left
+AlwaysBreakTemplateDeclarations: Yes    # Forces template declarations to always break onto new lines
+PackConstructorInitializers: Never      # Avoids packing multiple constructor initializers into one line; each initializer occupies its own line
+BreakConstructorInitializersBeforeComma: false # Prevents line breaks before commas in constructor initializers
+IndentPPDirectives: BeforeHash          # Indents preprocessor directives (#) just before the hash, aligning with the code block
+SortIncludes:    Never                  # Disables sorting of `#include` directives; maintains the original include order
 ...

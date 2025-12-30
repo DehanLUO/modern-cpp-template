@@ -1,364 +1,348 @@
-cmake_minimum_required(VERSION 3.15)
-
+# ==============================================================================
+# CMake Main Build Configuration
+# ==============================================================================
+# Primary CMakeLists.txt file defining the complete build system for a C++
+# project. This orchestrates all configuration modules, defines build targets,
+# and establishes installation rules. The structure follows a logical flow:
+# initialization, configuration, target definition, dependency resolution, and
+# finalization.
 #
-# Project details
-#
+# TODO Notes:
+# 1. Review and enhance module documentation where needed
+# 2. Consider symbolic link installation on Unix systems
+# 3. Verify CMake feature compatibility across versions
+# ==============================================================================
 
-project(
-  "Project"
-  VERSION 0.1.0
-  LANGUAGES CXX
-)
+cmake_minimum_required(VERSION 3.28)
 
-#
-# Set project options
-#
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "") # works
+project("Project" VERSION 0.1.0 LANGUAGES CXX)
 
-include(cmake/StandardSettings.cmake)
-include(cmake/StaticAnalyzers.cmake)
-include(cmake/Utils.cmake)
+# ------------------------------------------------------------------------------
+# Build Directory Sanity Check
+# ------------------------------------------------------------------------------
+# Prevents in-source builds which would pollute the source directory
+# with generated files. Requires separate build directory.
+if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+  message(
+    FATAL_ERROR
+    "In-source builds are prohibited. Create and use a separate build directory."
+  )
+endif()
+
+# ------------------------------------------------------------------------------
+# Project Configuration Initialization
+# ------------------------------------------------------------------------------
+# Loads core configuration modules in logical sequence:
+# 1. setup.cmake: Project variables, directory structure, source lists
+# 2. utils.cmake: Helper functions (verbose_message, etc.)
+# 3. config.cmake: Compiler flags, policies, build options
+# 4. static_analysis.cmake: Code analysis tool integration
+include(cmake/setup.cmake) # Project foundation setup
+include(${cmake_utils}) # Utility functions
+include(${cmake_config}) # Compiler and policy configuration
+include(${cmake_static_analyzers}) # Static analysis tools
+
+verbose_message("Configuration modules loaded successfully")
+
+# ------------------------------------------------------------------------------
+# Build Type Default Configuration
+# ------------------------------------------------------------------------------
+# Sets default build type to Debug if not specified via command line
+# or cache. Single-configuration generators require explicit type.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
-endif()
-message(STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n")
-
-if (UNIX)
-    add_compile_options("$<$<CONFIG:DEBUG>:-D_DEBUG>")    #this will allow to use same _DEBUG macro available in both Linux as well as Windows - MSCV environment. Easy to put Debug specific code.
-endif (UNIX)
-
-
-#
-# Setup alternative names
-#
-
-if(${PROJECT_NAME}_USE_ALT_NAMES)
-  string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWERCASE)
-  string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE)
-else()
-  set(PROJECT_NAME_LOWERCASE ${PROJECT_NAME})
-  set(PROJECT_NAME_UPPERCASE ${PROJECT_NAME})
+  message(STATUS "Default build type set to: ${CMAKE_BUILD_TYPE}")
 endif()
 
-#
-# Prevent building in the source directory
-#
+message(STATUS "Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
 
-if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
-  message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there.\n")
-endif()
+# ------------------------------------------------------------------------------
+# Platform-Specific Debug Macro
+# ------------------------------------------------------------------------------
+# Defines _DEBUG macro on Unix platforms when in Debug configuration,
+# providing parity with MSVC's automatic _DEBUG definition.
+if(UNIX)
+  add_compile_options("$<$<CONFIG:DEBUG>:-D_DEBUG>")
+endif(UNIX)
 
-#
-# Enable package managers
-#
+# ------------------------------------------------------------------------------
+# Package Manager Integration
+# ------------------------------------------------------------------------------
+# Conditionally includes package manager modules based on configuration.
+# These modules handle dependency resolution via Conan or vcpkg.
+include(${cmake_conan}) # Conan package manager support
+include(${cmake_vcpkg}) # vcpkg package manager support
 
-include(cmake/Conan.cmake)
-include(cmake/Vcpkg.cmake)
+# ------------------------------------------------------------------------------
+# Source File Discovery and Registration
+# ------------------------------------------------------------------------------
+# Loads module that defines source file variables (library_sources,
+# exe_sources, public_headers, test_sources).
+include(${cmake_sources})
 
-#
-# Create library, setup header and source files
-#
+verbose_message("Source file variables defined")
 
-# Find all headers and implementation files
-include(cmake/SourcesAndHeaders.cmake)
-
-if(${PROJECT_NAME}_BUILD_EXECUTABLE)
-  add_executable(${PROJECT_NAME} ${exe_sources})
-
-  if(${PROJECT_NAME}_VERBOSE_OUTPUT)
-    verbose_message("Found the following sources:")
-    foreach(source IN LISTS exe_sources)
-      verbose_message("* ${source}")
-    endforeach()
-  endif()
-
-  if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
-    add_library(${PROJECT_NAME}_LIB ${headers} ${sources})
-
-    if(${PROJECT_NAME}_VERBOSE_OUTPUT)
-      verbose_message("Found the following headers:")
-      foreach(header IN LISTS headers)
-        verbose_message("* ${header}")
-      endforeach()
-    endif()
-  endif()
-elseif(${PROJECT_NAME}_BUILD_HEADERS_ONLY)
+# ------------------------------------------------------------------------------
+# Target Creation Based on Project Type
+# ------------------------------------------------------------------------------
+# Creates appropriate CMake targets according to configured build type:
+# - Header-only library (INTERFACE target)
+# - Static/shared library
+# - Optional executable target
+if(${PROJECT_NAME}_build_headers_only)
+  # Header-only INTERFACE library: contains only headers, no compiled code
   add_library(${PROJECT_NAME} INTERFACE)
+  message(STATUS "Created INTERFACE library target: ${PROJECT_NAME}")
 
-  if(${PROJECT_NAME}_VERBOSE_OUTPUT)
-    verbose_message("Found the following headers:")
-    foreach(header IN LIST headers)
-      verbose_message("* ${header}")
-    endforeach()
-  endif()
-else()
-  add_library(
+  # List headers for developer visibility in verbose mode
+  verbose_list_message(public_headers)
+
+  # Associate headers with target using FILE_SET for proper installation
+  target_sources(
     ${PROJECT_NAME}
-    ${headers}
-    ${sources}
+    PUBLIC
+      FILE_SET headers
+        TYPE HEADERS
+        BASE_DIRS
+          ${dir_include} # Source headers
+          ${dir_binary_include} # Generated headers
+        FILES
+          ${public_headers} # Public API headers
+          ${header_version} # Generated version header
+  )
+else()
+  # Static or shared library with compiled implementation
+  add_library(${PROJECT_NAME})
+  message(STATUS "Created library target: ${PROJECT_NAME}")
+
+  # Display source file listings for verification
+  verbose_list_message(public_headers)
+  verbose_list_message(library_sources)
+
+  # Configure target sources: headers (PUBLIC) and implementation (PRIVATE)
+  target_sources(
+    ${PROJECT_NAME}
+    PUBLIC
+      FILE_SET headers
+        TYPE HEADERS
+        BASE_DIRS
+          ${dir_include} # Source headers
+          ${dir_binary_include} # Generated headers
+        FILES
+          ${public_headers} # Public API headers
+          ${header_version} # Generated version header
+    PRIVATE
+      ${library_sources} # Implementation sources
   )
 
-  if(${PROJECT_NAME}_VERBOSE_OUTPUT)
-    verbose_message("Found the following sources:")
-    foreach(source IN LISTS sources)
-      verbose_message("* ${source}")
-    endforeach()
-    verbose_message("Found the following headers:")
-    foreach(header IN LISTS headers)
-      verbose_message("* ${header}")
-    endforeach()
+  # Create executable target if configured
+  if(${PROJECT_NAME}_build_executable)
+    add_executable(${PROJECT_NAME}_exe)
+    message(STATUS "Created executable target: ${PROJECT_NAME}_exe")
+
+    verbose_list_message(exe_sources)
+    target_sources(${PROJECT_NAME}_exe PRIVATE ${exe_sources})
   endif()
 endif()
 
+# ------------------------------------------------------------------------------
+# Target Output Configuration
+# ------------------------------------------------------------------------------
+# Sets output directories and naming conventions for library targets
 set_target_properties(
   ${PROJECT_NAME}
   PROPERTIES
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}"
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}"
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}"
+    ARCHIVE_OUTPUT_DIRECTORY
+      ${dir_binary_lib} # Static libraries
+    LIBRARY_OUTPUT_DIRECTORY
+      ${dir_binary_lib} # Shared libraries
+    # Versioned output name with debug suffix: libProject[_d].0.1.0
+    OUTPUT_NAME ${PROJECT_NAME}$<$<CONFIG:Debug>:_d>.${PROJECT_VERSION}
 )
-if(${PROJECT_NAME}_BUILD_EXECUTABLE AND ${PROJECT_NAME}_ENABLE_UNIT_TESTING)
+
+# Configure executable output if applicable
+if(${PROJECT_NAME}_build_executable)
   set_target_properties(
-    ${PROJECT_NAME}_LIB
+    ${PROJECT_NAME}_exe
     PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}"
-    OUTPUT_NAME ${PROJECT_NAME}
+      RUNTIME_OUTPUT_DIRECTORY
+        ${dir_binary_bin} # Executable directory
+      # Versioned output name with debug suffix: Project[_d].0.1.0
+      OUTPUT_NAME ${PROJECT_NAME}$<$<CONFIG:Debug>:_d>.${PROJECT_VERSION}
   )
 endif()
 
-message(STATUS "Added all header and implementation files.\n")
+verbose_message("Target output directories configured")
 
-#
-# Set the project standard and warnings
-#
-
-if(${PROJECT_NAME}_BUILD_HEADERS_ONLY)
+# ------------------------------------------------------------------------------
+# C++ Language Standard Enforcement
+# ------------------------------------------------------------------------------
+# Sets C++17 standard requirement for all targets
+if(${PROJECT_NAME}_build_headers_only)
+  # INTERFACE targets propagate requirements to consumers
   target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 else()
+  # Regular libraries require C++17 for themselves and consumers
   target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
-  if(${PROJECT_NAME}_BUILD_EXECUTABLE AND ${PROJECT_NAME}_ENABLE_UNIT_TESTING)
-    target_compile_features(${PROJECT_NAME}_LIB PUBLIC cxx_std_17)
+  if(${PROJECT_NAME}_build_executable)
+    target_compile_features(${PROJECT_NAME}_exe PUBLIC cxx_std_17)
   endif()
 endif()
-include(cmake/CompilerWarnings.cmake)
+
+message(STATUS "C++17 standard enforced")
+
+# ------------------------------------------------------------------------------
+# Compiler Warning Configuration
+# ------------------------------------------------------------------------------
+# Applies project-specific warning flags to targets
+include(${cmake_compiler_warnings})
 set_project_warnings(${PROJECT_NAME})
 
-verbose_message("Applied compiler warnings. Using standard ${CMAKE_CXX_STANDARD}.\n")
+verbose_message("Compiler warnings applied to targets")
 
-#
-# Enable Doxygen
-#
+# ------------------------------------------------------------------------------
+# Dependency Linking
+# ------------------------------------------------------------------------------
+# TODO: Insert project-specific dependency resolution here
+# Example pattern:
+# find_package(SomeLib 1.0 REQUIRED)
+# target_link_libraries(${PROJECT_NAME} PUBLIC SomeLib::SomeLib)
 
-include(cmake/Doxygen.cmake)
+# Link executable to library if both exist
+if(${PROJECT_NAME}_build_executable)
+  target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME})
+endif()
 
-#
-# Model project dependencies
-#
-
-# Identify and link with the specific "packages" the project uses
-#find_package(package_name package_version REQUIRED package_type [other_options])
-#target_link_libraries(
-#  ${PROJECT_NAME}
-#  PUBLIC
-#    dependency1 ...
-#  PRIVATE
-#    dependency2 ...
-#    ${PROJECT_NAME}_PROJECT_OPTIONS
-#    ${PROJECT_NAME}_PROJECT_WARNINGS
-#)
-#if(${PROJECT_NAME}_BUILD_EXECUTABLE AND ${PROJECT_NAME}_ENABLE_UNIT_TESTING)
-#  target_link_libraries(
-#    ${PROJECT_NAME}_LIB
-#    PUBLIC
-#      dependency1 ...
-#  )
-#endif()
-
-# For Windows, it is necessary to link with the MultiThreaded library.
-# Depending on how the rest of the project's dependencies are linked, it might be necessary
-# to change the line to statically link with the library.
-#
-# This is done as follows:
-#
-# set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-#
-# On Linux and Mac this variable is ignored. If any issues rise from it, try commenting it out
-# and letting CMake decide how to link with it.
+# Configure MSVC runtime library (ignored on other platforms)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
-verbose_message("Successfully added all dependencies and linked against them.")
+verbose_message("Dependencies linked successfully")
 
-#
-# Set the build/user include directories
-#
+# ------------------------------------------------------------------------------
+# Installation Configuration
+# ------------------------------------------------------------------------------
+# Defines rules for installing targets, headers, and CMake package files
+include(GNUInstallDirs) # Standard installation directory variables
 
-# Allow usage of header files in the `src` directory, but only for utilities
-if(${PROJECT_NAME}_BUILD_HEADERS_ONLY)
-  target_include_directories(
-    ${PROJECT_NAME}
-    INTERFACE
-    $<INSTALL_INTERFACE:include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  )
-else()
-  target_include_directories(
-    ${PROJECT_NAME}
-    PUBLIC
-    $<INSTALL_INTERFACE:include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-  )
-  if(${PROJECT_NAME}_BUILD_EXECUTABLE AND ${PROJECT_NAME}_ENABLE_UNIT_TESTING)
-    target_include_directories(
-      ${PROJECT_NAME}_LIB
-      PUBLIC
-      $<INSTALL_INTERFACE:include>
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-      PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/src
-    )
-  endif()
-endif()
-
-message(STATUS "Finished setting up include directories.")
-
-#
-# Provide alias to library for
-#
-
-if(${PROJECT_NAME}_BUILD_EXECUTABLE)
-  add_executable(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-else()
-  add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-endif()
-
-verbose_message("Project is now aliased as ${PROJECT_NAME}::${PROJECT_NAME}.\n")
-
-#
-# Format the project using the `clang-format` target (i.e: cmake --build build --target clang-format)
-#
-
-add_clang_format_target()
-
-#
-# Install library for easy downstream inclusion
-#
-
-include(GNUInstallDirs)
+# Install library target with export set for downstream consumption
 install(
-  TARGETS
-  ${PROJECT_NAME}
+  TARGETS ${PROJECT_NAME}
   EXPORT
-  ${PROJECT_NAME}Targets
-  LIBRARY DESTINATION
-  ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION
-  ${CMAKE_INSTALL_BINDIR}
-  ARCHIVE DESTINATION
-  ${CMAKE_INSTALL_LIBDIR}
-  INCLUDES DESTINATION
-  include
-  PUBLIC_HEADER DESTINATION
-  include
+    ${PROJECT_NAME}Targets # Creates export set
+  LIBRARY
+    DESTINATION
+      ${CMAKE_INSTALL_LIBDIR} # Shared libraries
+  RUNTIME
+    DESTINATION
+      ${CMAKE_INSTALL_BINDIR} # Executables / DLLs on Windows
+  ARCHIVE
+    DESTINATION
+      ${CMAKE_INSTALL_LIBDIR} # Static libraries
+  FILE_SET headers
+    DESTINATION
+      include # Install headers
 )
 
+# Install executable if present
+if(${PROJECT_NAME}_build_executable)
+  install(
+    TARGETS ${PROJECT_NAME}_exe
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+endif()
+
+# Install export set for find_package() compatibility
 install(
-  EXPORT
-  ${PROJECT_NAME}Targets
-  FILE
-  ${PROJECT_NAME}Targets.cmake
+  EXPORT ${PROJECT_NAME}Targets
+  FILE ${PROJECT_NAME}Targets.cmake
   NAMESPACE
-  ${PROJECT_NAME}::
-  DESTINATION
-  ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+    ${PROJECT_NAME}:: # Namespace for imported targets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
 
-#
-# Add version header
-#
+verbose_message("Installation rules configured")
 
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in
-  include/${PROJECT_NAME_LOWERCASE}/version.hpp
-  @ONLY
-)
-
-install(
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME_LOWERCASE}/version.hpp
-  DESTINATION
-  include/${PROJECT_NAME_LOWERCASE}
-)
-
-#
-# Install the `include` directory
-#
-
-install(
-  DIRECTORY
-  include/${PROJECT_NAME_LOWERCASE}
-  DESTINATION
-  include
-)
-
-verbose_message("Install targets successfully built. Install with `cmake --build <build_directory> --target install --config <build_config>`.")
-
-#
-# Quick `ConfigVersion.cmake` creation
-#
-
+# ------------------------------------------------------------------------------
+# CMake Package Configuration Files
+# ------------------------------------------------------------------------------
+# Generates Config.cmake and ConfigVersion.cmake for downstream projects
 include(CMakePackageConfigHelpers)
+
+# Version compatibility file (SameMajorVersion: compatible within major version)
 write_basic_package_version_file(
   ${PROJECT_NAME}ConfigVersion.cmake
-  VERSION
-  ${PROJECT_VERSION}
-  COMPATIBILITY
-  SameMajorVersion
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
 )
 
+# Main package configuration file from template
 configure_package_config_file(
-  ${CMAKE_CURRENT_LIST_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-  INSTALL_DESTINATION
-  ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+  ${cmake_packageconfig} # Input template
+  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake # Output file
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
 
+# Install both package configuration files
 install(
   FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-  DESTINATION
-  ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
 
-#
-# Generate export header if specified
-#
+verbose_message("Package configuration files generated")
 
+# ------------------------------------------------------------------
+# Build Information Header Generation
+# ------------------------------------------------------------------
+# Uses CMake's `configure_file` command to process a template file containing
+# version information (e.g., major/minor/patch numbers). The `@ONLY` parameter
+# restricts variable substitution to variables marked with `@VARIABLE@` syntax
+# in the template, providing precise control over the substitution process.
+configure_file(${hppin_version} ${header_version} @ONLY)
+
+# Generates build-time metadata headers (timestamp, compiler, git info)
+include(${cmake_buildinfo})
+
+# ------------------------------------------------------------------------------
+# Export Header Generation (Optional)
+# ------------------------------------------------------------------------------
+# Creates symbol visibility export header for shared libraries
 if(${PROJECT_NAME}_GENERATE_EXPORT_HEADER)
   include(GenerateExportHeader)
   generate_export_header(${PROJECT_NAME})
   install(
-    FILES
-    ${PROJECT_BINARY_DIR}/${PROJECT_NAME_LOWERCASE}_export.h
-    DESTINATION
-    include
+    FILES ${PROJECT_BINARY_DIR}/${project_name_lowercase}_export.h
+    DESTINATION include
   )
 
-  message(STATUS "Generated the export header `${PROJECT_NAME_LOWERCASE}_export.h` and installed it.")
+  message(STATUS "Export header generated: ${project_name_lowercase}_export.h")
 endif()
 
-message(STATUS "Finished building requirements for installing the package.\n")
+# ------------------------------------------------------------------
+# Documentation Generation (Optional)
+# ------------------------------------------------------------------
+# Configures Doxygen if enabled in project options
+if(${PROJECT_NAME}_ENABLE_DOXYGEN)
+  include(${cmake_doxygen})
+endif()
 
-#
-# Unit testing setup
-#
-
+# ------------------------------------------------------------------------------
+# Unit Testing Infrastructure
+# ------------------------------------------------------------------------------
+# Enables and configures unit testing if requested
 if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
-  enable_testing()
-  message(STATUS "Build unit tests for the project. Tests should always be found in the test folder\n")
-  add_subdirectory(test)
+  enable_testing() # Activates CMake's testing subsystem
+  add_subdirectory(test) # Recursively process test/CMakeLists.txt
+endif()
+
+# ------------------------------------------------------------------------------
+# Code Formatting Target
+# ------------------------------------------------------------------------------
+# Adds clang-format target for code formatting:
+#   `cmake --build build --target clang-format`
+if(${PROJECT_NAME}_ENABLE_CODE_FORMAT)
+  include(${cmake_format})
+  add_clang_format_target()
 endif()
