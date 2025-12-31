@@ -1,11 +1,12 @@
-#ifndef @PROJECT_NAME_UPPERCASE@_VERSION_H_
-#define @PROJECT_NAME_UPPERCASE@_VERSION_H_
+#ifndef @project_name_uppercase@_VERSION_HPP_
+#define @project_name_uppercase@_VERSION_HPP_
 
-#define @PROJECT_NAME_UPPERCASE@_VERSION "@PROJECT_VERSION@"
+namespace @project_name_lowercase@ {
+  inline constexpr const char* version = "@PROJECT_VERSION@";
 
-#define @PROJECT_NAME_UPPERCASE@_MAJOR_VERSION @PROJECT_VERSION_MAJOR@
-#define @PROJECT_NAME_UPPERCASE@_MINOR_VERSION @PROJECT_VERSION_MINOR@
-#define @PROJECT_NAME_UPPERCASE@_PATCH_VERSION @PROJECT_VERSION_PATCH@
+  inline constexpr const int major_versoin = @PROJECT_VERSION_MAJOR@;
+  inline constexpr const int minor_version = @PROJECT_VERSION_MINOR@;
+  inline constexpr const int patch_version = @PROJECT_VERSION_PATCH@;
+} // namespace @project_name_lowercase@ 
 
-#endif  // @PROJECT_NAME_UPPERCASE@_VERSION_H_
-
+#endif  // @project_name_uppercase@_VERSION_HPP_

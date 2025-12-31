@@ -47,7 +47,8 @@ macro(generate_commands_to_buildinfo_header)
     "-DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}" # Target OS name
     "-DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}" # Target architecture
     # Project-specific parameters:
-    "-DNAME=${project_name_uppercase}" ##Uppercase project name for header guard
+    "-DNAME_LOWERCASE=${project_name_lowercase}" # for namespace
+    "-DNAME_UPPERCASE=${project_name_uppercase}" # for header guard
     "-DOUTPUT=${output}" # Output file path (must be defined before macro call)
     # Script execution directive:
     "-P ${cmake_buildinfo_script}" # Execute the specified CMake script file

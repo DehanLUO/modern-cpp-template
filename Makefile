@@ -40,8 +40,8 @@ coverage: ## check code coverage quickly GCC
 	rm -rf build/
 	cmake -Bbuild -DCMAKE_INSTALL_PREFIX=$(INSTALL_LOCATION) -DProject_ENABLE_CODE_COVERAGE=1
 	cmake --build build --config Release
-	cd build/ && ctest -C Release -VV
-	cd .. && (bash -c "find . -type f -name '*.gcno' -exec gcov -pb {} +" || true)
+	cd build/ && ctest -C Release -VV; \
+		(bash -c "find . -type f -name '*.gcno' -exec gcov -pb {} +" || true)
 
 docs: ## generate Doxygen HTML documentation, including API docs
 	rm -rf docs/

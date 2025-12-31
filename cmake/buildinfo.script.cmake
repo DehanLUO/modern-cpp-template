@@ -133,58 +133,61 @@ file(
  * DO NOT EDIT IT DIRECTLY!
  */
 
-#ifndef ${NAME}_BUILDINFO_H_
-#define ${NAME}_BUILDINFO_H_
+#ifndef ${NAME_UPPERCASE}_BUILDINFO_H_
+#define ${NAME_UPPERCASE}_BUILDINFO_H_
 
+namespace ${NAME_LOWERCASE} {
 /*
  * Build Metadata - Captured at CMake configuration time
  */
 
 // Timestamp of this build configuration (ISO 8601 format with timezone)
-#define BUILD_TIMESTAMP \"${_timestamp}\"
+inline constexpr const char* build_timestamp = \"${_timestamp}\";
 
 // Build configuration type (e.g., DEBUG, RELEASE, RELWITHDEBINFO)
-#define BUILD_TYPE      \"${_build_type_upper}\"
+inline constexpr const char* build_type = \"${_build_type_upper}\";
 
 // User account that executed the CMake configuration
-#define BUILD_USER      \"${_build_user}\"
+inline constexpr const char* build_user = \"${_build_user}\";
 
 // System identification of the build host machine
-#define BUILD_HOST      \"${_build_host}\"
+inline constexpr const char* build_host = \"${_build_host}\";
 
 /*
  * Platform Architecture Information
  */
 
 // Target operating system (where compiled binaries will run)
-#define TARGET_SYSTEM       \"${_system_name}\"
+inline constexpr const char* target_system = \"${_system_name}\";
 
 // Target CPU architecture (e.g., x86_64, ARM64)
-#define TARGET_ARCHITECTURE \"${_system_processor}\"
+inline constexpr const char* target_architecture = \"${_system_processor}\";
 
 // Host operating system (where compilation is performed)
 // Differs from TARGET_SYSTEM in cross-compilation scenarios
-#define HOST_SYSTEM         \"${CMAKE_HOST_SYSTEM_NAME}\"
+inline constexpr const char* host_system = \"${CMAKE_HOST_SYSTEM_NAME}\";
 
 /*
  * Compiler Toolchain Information
  */
 
 // Compiler vendor identification (e.g., GNU, Clang, MSVC)
-#define COMPILER_ID      \"${_compiler_id}\"
+inline constexpr const char* compiler_id = \"${_compiler_id}\";
 
 /*
  * Version Control Information (Git)
  */
 
 // Abbreviated Git commit hash (7 characters) or \"unknown\"
-#define COMPILER_VERSION \"${_compiler_version}\"
+inline constexpr const char* compiler_version = \"${_compiler_version}\";
 
 // Git description (tag with commit count, or commit hash)
 // Includes \"-dirty\" suffix if working tree has uncommitted changes
-#define GIT_COMMIT_HASH \"${_git_hash}\"
-#define GIT_DESCRIBE    \"${_git_describe}\"
+inline constexpr const char* git_commit_hash = \"${_git_hash}\";
+inline constexpr const char* git_describe = \"${_git_describe}\";
 
-#endif // ${NAME}_BUILDINFO_H_
+}  // namespace ${NAME_LOWERCASE}
+
+#endif  // ${NAME_UPPERCASE}_BUILDINFO_H_
 "
 )

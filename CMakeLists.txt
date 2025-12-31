@@ -40,7 +40,9 @@ endif()
 include(cmake/setup.cmake) # Project foundation setup
 include(${cmake_utils}) # Utility functions
 include(${cmake_config}) # Compiler and policy configuration
-include(${cmake_static_analyzers}) # Static analysis tools
+# Static analysis tools
+include(${cmake_clang_tidy})
+include(${cmake_cppcheck})
 
 verbose_message("Configuration modules loaded successfully")
 

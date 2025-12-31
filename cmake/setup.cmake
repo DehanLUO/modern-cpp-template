@@ -179,6 +179,12 @@ set(cmake_buildinfo ${dir_cmake}/buildinfo.cmake)
 # Build information script (executed as separate process)
 set(cmake_buildinfo_script ${dir_cmake}/buildinfo.script.cmake)
 
+# Clang-Tidy configuration module
+set(cmake_clang_tidy ${dir_cmake}/clang_tidy.cmake)
+
+# Code coverage module
+set(cmake_codecov ${dir_cmake}/codecov.cmake)
+
 # Compiler warning configuration module
 set(cmake_compiler_warnings ${dir_cmake}/compiler_warnings.cmake)
 
@@ -187,6 +193,9 @@ set(cmake_conan ${dir_cmake}/conan.cmake)
 
 # Project configuration module
 set(cmake_config ${dir_cmake}/config.cmake)
+
+# Cppcheck configuration module
+set(cmake_cppcheck ${dir_cmake}/cppcheck.cmake)
 
 # Doxygen documentation generation
 set(cmake_doxygen ${dir_cmake}/doxygen.cmake)
@@ -199,9 +208,6 @@ set(cmake_packageconfig ${dir_cmake}/PackageConfig.cmake.in)
 
 # Source file management and organization
 set(cmake_sources ${dir_cmake}/sources.cmake)
-
-# Static code analysis tools configuration
-set(cmake_static_analyzers ${dir_cmake}/static_analysis.cmake)
 
 # General utility functions
 set(cmake_utils ${dir_cmake}/utils.cmake)

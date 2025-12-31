@@ -21,6 +21,8 @@ verbose_message(
   "Configuring unit test infrastructure for project: ${project_name_copy}"
 )
 
+include(${cmake_codecov})
+
 # Processes each test source file provided by the parent project's test_sources
 # variable. This loop architecture supports scalable test suites where each test
 # file becomes an independent executable.
@@ -47,36 +49,8 @@ foreach(file ${test_sources})
   # maintains the same quality standards as production code.
   set_project_warnings("${test_name}_Tests")
 
-  # Enables GCC-based code coverage instrumentation when requested by the parent
-  # project configuration. Coverage data is collected from the main library code
-  # exercised by tests, not from the test harness itself.
-  #
-  # IMPORTANT: Instrumentation flags are applied to the main library target
-  # (${project_name_copy}), not the test executable, because coverage metrics
-  # measure the code under test, not the testing code.
-  if(${project_name_copy}_ENABLE_CODE_COVERAGE)
-    # Apply compilation flags to the main library target:
-    target_compile_options(
-      ${project_name_copy}
-      PUBLIC
-        -O0 # Disable optimizations to preserve accurate line mapping
-        -g # Include debugging symbols for source-level correlation
-        -fprofile-arcs # Generate arc profiling information for branch coverage
-        -ftest-coverage # Instrument code for test coverage measurement
-    )
-
-    # Apply linking flags to ensure coverage runtime linkage:
-    target_link_options(
-      ${project_name_copy}
-      PUBLIC -fprofile-arcs -ftest-coverage
-    )
-
-    # Provide developer feedback about coverage configuration status.
-    verbose_message(
-      "Code coverage instrumentation enabled via GCC gcov for library: "
-      "${project_name_copy}"
-    )
-  endif()
+  # Configures compiler and linker instrumentation for code coverage analysis
+  configure_code_coverage_instrumentation()
 
   # ----------------------------------------------------------------------------
   # Testing Framework Selection and Integration

@@ -13,7 +13,7 @@ TEST(TmpAddTest, CheckValues) {
 TEST(BuildInfoTest, DumpBuildInfo_OutputContainsExpectedFields) {
   std::ostringstream oss;
   tmp::DumpBuildInfo(oss);
-  std::string output = oss.str();
+  const std::string output = oss.str();
 
   EXPECT_FALSE(output.empty());
 }

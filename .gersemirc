@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/BlankSpruce/gersemi/0.24.0/gersemi/configuration.schema.json
 
 definitions:
+  - cmake/codecov.cmake
   - cmake/compiler_warnings.cmake
   - cmake/utils.cmake
   - cmake/buildinfo.cmake
+  - cmake/format.cmake
 disable_formatting: false
 extensions: []
 indent: 2

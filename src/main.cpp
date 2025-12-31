@@ -3,38 +3,29 @@
 
 #include "buildinfo_bin.hpp"
 
+namespace {
+
 void DumpBuildInfo(std::ostream& ostream = std::cout) {
-  ostream << "Build Information\n"
-             "-----------------\n"
-             "Build    : "
-          << BUILD_TYPE << " (" << BUILD_TIMESTAMP
-          << ")\n"
-             "User     : "
-          << BUILD_USER << " @ " << BUILD_HOST
-          << "\n\n"
+  ostream << "Build Information\n";
+  ostream << "-----------------\n";
+  ostream << "Build    : " << project::build_type << " (" << project::build_timestamp << ")\n";
+  ostream << "User     : " << project::build_user << " @ " << project::build_host << "\n\n";
 
-             "Platform : "
-          << TARGET_SYSTEM << " " << TARGET_ARCHITECTURE
-          << "\n"
-             "Host     : "
-          << HOST_SYSTEM
-          << "\n\n"
+  ostream << "Platform : " << project::target_system << " " << project::target_architecture << "\n";
+  ostream << "Host     : " << project::host_system << "\n\n";
 
-             "Compiler : "
-          << COMPILER_ID << " " << COMPILER_VERSION
-          << "\n\n"
+  ostream << "Compiler : " << project::compiler_id << " " << project::compiler_version << "\n\n";
 
-             "Source   : "
-          << GIT_DESCRIBE << '\n'
-          << "Commit   : " << GIT_COMMIT_HASH << '\n';
+  ostream << "Source   : " << project::git_describe << '\n';
+  ostream << "Commit   : " << project::git_commit_hash << '\n';
 }
 
-int main(int argc, char* argv[]) {
+}  // namespace
+
+int main(int /*argc*/, char** /*argv*/) {
   tmp::DumpBuildInfo();
 
   DumpBuildInfo();
 
   return 0;
 }
-
-//
