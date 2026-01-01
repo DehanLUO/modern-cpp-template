@@ -15,6 +15,12 @@
 
 cmake_minimum_required(VERSION 3.28)
 
+# NOTE: If you change the project name below (e.g., from "Project" to "MyLib"),
+# be sure to update all related references throughout the codebase:
+# - Rename the include directory: ./include/Project/ → ./include/mylib/
+# - Update the PROJECT_NAME variable in ./Makefile (e.g., PROJECT_NAME := MyLib)
+# Failure to synchronize these will break builds, tests, and documentation
+# generation.
 project("Project" VERSION 0.1.0 LANGUAGES CXX)
 
 # ------------------------------------------------------------------------------

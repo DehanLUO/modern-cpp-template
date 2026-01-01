@@ -5,7 +5,6 @@
 # into the CMake build system. Clang-Tidy performs code quality checks and
 # enforces coding standards on C++ source files during compilation.
 #
-# TODO: set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_CLANG_TIDY "")
 # ==============================================================================
 
 # Conditional check: If Clang-Tidy has already been explicitly disabled
