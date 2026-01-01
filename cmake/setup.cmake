@@ -125,6 +125,9 @@ set(dir_binary_bin ${dir_binary}/bin)
 # Library output directory: Contains compiled static/shared libraries
 set(dir_binary_lib ${dir_binary}/lib)
 
+# Coverage output directory: Contains coverage reports
+set(dir_codecov ${CMAKE_BINARY_DIR}/coverage/${project_name_copy})
+
 # ------------------------------------------------------------------------------
 # Header File Directories (Build-time)
 # ------------------------------------------------------------------------------
@@ -205,6 +208,9 @@ set(cmake_format ${dir_cmake}/format.cmake)
 
 # CMake package configuration template
 set(cmake_packageconfig ${dir_cmake}/PackageConfig.cmake.in)
+
+# Clang-generated .profraw files merge script (executed as separate process)
+set(cmake_profraw_script ${dir_cmake}/profraw.script.cmake)
 
 # Source file management and organization
 set(cmake_sources ${dir_cmake}/sources.cmake)

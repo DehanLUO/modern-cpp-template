@@ -21,6 +21,8 @@ verbose_message(
   "Configuring unit test infrastructure for project: ${project_name_copy}"
 )
 
+# Includes the code coverage configuration module, which defines macros and
+# functions for instrumenting builds with profiling support (e.g., gcov/llvm-cov).
 include(${cmake_codecov})
 
 # Processes each test source file provided by the parent project's test_sources
@@ -48,9 +50,6 @@ foreach(file ${test_sources})
   # compiler_warnings.cmake) to the test executable. This ensures test code
   # maintains the same quality standards as production code.
   set_project_warnings("${test_name}_Tests")
-
-  # Configures compiler and linker instrumentation for code coverage analysis
-  configure_code_coverage_instrumentation()
 
   # ----------------------------------------------------------------------------
   # Testing Framework Selection and Integration
@@ -105,9 +104,18 @@ foreach(file ${test_sources})
   # defines the test label in CTest reports, while COMMAND specifies the
   # executable to execute.
   add_test(NAME ${test_name} COMMAND ${test_name}_Tests)
+
+  # Applies compiler/linker instrumentation for code coverage if enabled. This
+  # function tailors flags based on library type (header-only/static/shared)
+  # and compiler (GCC/Clang), ensuring correct profiling data generation.
+  configure_code_coverage_instrumentation()
 endforeach()
+
+# Defines a top-level `coverage` custom target that orchestrates test execution,
+# data collection, merging, and reporting—adapted to the active compiler.
+set_coverage_target()
 
 # Configuration Completion Notification
 verbose_message(
-  "Unit test configuration completed for project: ${project_name_copy}()"
+  "Unit test configuration completed for project: ${project_name_copy}"
 )
