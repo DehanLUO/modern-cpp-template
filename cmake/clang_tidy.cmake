@@ -5,7 +5,6 @@
 # into the CMake build system. Clang-Tidy performs code quality checks and
 # enforces coding standards on C++ source files during compilation.
 #
-# TODO: CMAKE_CXX_CLANG_TIDY init?
 # TODO: set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_CLANG_TIDY "")
 # ==============================================================================
 
@@ -13,6 +12,17 @@
 # for this specific project via the ${PROJECT_NAME}_ENABLE_CLANG_TIDY variable,
 # exit this configuration block immediately to avoid redundant setup.
 if(NOT ${PROJECT_NAME}_ENABLE_CLANG_TIDY)
+  # Explicitly disable Clang-Tidy for this project by clearing the
+  # CMAKE_CXX_CLANG_TIDY variable. This is necessary because:
+  # - CMAKE_CXX_CLANG_TIDY is inherited from parent scopes (e.g., parent
+  #   CMakeLists, toolchain files, or preset configurations).
+  # - Without this reset, even when the user disables Clang-Tidy locally,
+  #   the build system might still invoke Clang-Tidy due to an inherited value.
+  # - Setting it to an empty string ensures that CMake will NOT run Clang-Tidy
+  #   for any C++ target defined in this directory and its subdirectories.
+  # Note: CMake treats an empty CMAKE_CXX_CLANG_TIDY as "disabled".
+  set(CMAKE_CXX_CLANG_TIDY "")
+
   # Early return statement prevents reconfiguration if already active
   return()
 endif()
