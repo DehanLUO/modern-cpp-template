@@ -51,8 +51,8 @@ function(configure_code_coverage_instrumentation)
     # Header-only libraries contain no compiled object files; all implementation
     # resides in headers and is instantiated within the test executable’s
     # translation unit. Thus, instrumentation must be applied to the test target.
-    apply_coverage_compile_flags(${test_name}_Tests)
-    apply_coverage_link_flags(${test_name}_Tests PRIVATE)
+    apply_coverage_compile_flags(${project_name_copy}_${test_name}_Tests)
+    apply_coverage_link_flags(${project_name_copy}_${test_name}_Tests PRIVATE)
   else()
     # Compiled libraries (STATIC/SHARED) contain actual object code and must be
     # instrumented directly at the library level.
@@ -78,9 +78,23 @@ function(configure_code_coverage_instrumentation)
   # is replaced by the process ID. This naming scheme prevents file collisions
   # during parallel or multi-process test execution.
   set_tests_properties(
-    ${test_name}
+    ${project_name_copy}_${test_name}
     PROPERTIES ENVIRONMENT "LLVM_PROFILE_FILE=${dir_codecov}/default-%p.profraw"
   )
+
+  # Appends the absolute path of the test executable to the list of binaries
+  # that will later be analysed by llvm-cov. The path is represented as a
+  # generator expression so that it is resolved at build time rather than at
+  # configuration time.
+  list(
+    APPEND clang_coverage_executables
+    $<TARGET_FILE:${project_name_copy}_${test_name}_Tests>
+  )
+
+  # Propagates the updated list of coverage executables to the parent scope.
+  # This is required because list() operations are confined to the current
+  # function scope by default.
+  set(clang_coverage_executables "${clang_coverage_executables}" PARENT_SCOPE)
 endfunction()
 
 # ------------------------------------------------------------------------------
@@ -127,7 +141,7 @@ function(set_clang_coverage_target)
   endif()
 
   add_custom_target(
-    coverage
+    ${project_name_copy}_coverage
     # Ensures a clean output directory by recursively removing existing content.
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${dir_codecov}
     # Executes all registered tests in verbose mode to generate .profraw files.
@@ -139,16 +153,22 @@ function(set_clang_coverage_target)
       "-DDIR=${dir_codecov}" #
       "-DLLVM_PROFDATA=${LLVM_PROFDATA}" #
       "-P ${cmake_profraw_script}"
-    # Generates a human-readable summary report using the merged profile data.
+    # Invokes llvm-cov to generate a human-readable coverage summary. The
+    # command consumes the list of instrumented executables and correlates them
+    # with the merged profiling data produced by llvm-profdata.
     COMMAND
-      ${LLVM_COV} report $<TARGET_FILE:tmp_test_Tests>
+      ${LLVM_COV} report ${clang_coverage_executables}
+      #-ignore-filename-regex=
       -instr-profile=${dir_codecov}/coverage.profdata
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all tests and generating LLVM coverage report"
     VERBATIM # Prevents CMake from adding shell quoting.
   )
 
-  message(STATUS "Added LLVM-based coverage target")
+  message(
+    STATUS
+    "Added LLVM-based coverage target: ${project_name_copy}_coverage"
+  )
 endfunction()
 
 # ------------------------------------------------------------------------------
@@ -176,7 +196,7 @@ function(set_gcc_coverage_target)
   endif()
 
   add_custom_target(
-    coverage
+    ${project_name_copy}_coverage
     # Removes any pre-existing coverage output directory.
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${dir_codecov}
     # Recreates the directory to hold generated .gcov files.
@@ -196,7 +216,10 @@ function(set_gcc_coverage_target)
     VERBATIM
   )
 
-  message(STATUS "Added GCC-based coverage target")
+  message(
+    STATUS
+    "Added GCC-based coverage target: ${project_name_copy}_coverage"
+  )
 endfunction()
 
 # ------------------------------------------------------------------------------
@@ -207,6 +230,10 @@ endfunction()
 if(NOT ${project_name_copy}_ENABLE_CODE_COVERAGE)
   return() # Exit early if coverage is disabled.
 endif()
+
+# Initialises the list of coverage executables to an empty value before any test
+# targets append their corresponding executable paths.
+set(clang_coverage_executables "")
 
 # Clang requires two flags: one for compile-time instrumentation generation and
 # another for coverage mapping metadata.

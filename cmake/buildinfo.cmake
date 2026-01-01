@@ -116,16 +116,15 @@ generate_buildinfo_header(${header_buildinfo_lib})
 
 # Establish a dependency relationship: the library target depends on the header
 # being generated before compilation can proceed.
-add_dependencies(${project_name_copy} header_buildinfo_lib)
-
-# Create a custom target representing the header generation process. This allows
-# explicit building of the header via `make header_buildinfo_lib`.
-add_dependencies(${project_name_copy} header_buildinfo_lib)
+add_dependencies(${project_name_copy} ${project_name_copy}_header_buildinfo_lib)
 
 # Integrate the generated header into the library target's source set. The
 # FILE_SET mechanism organizes headers logically within the project structure,
 # with BASE_DIRS specifying the search path for inclusion.
-add_custom_target(header_buildinfo_lib DEPENDS ${header_buildinfo_lib})
+add_custom_target(
+  ${project_name_copy}_header_buildinfo_lib
+  DEPENDS ${header_buildinfo_lib}
+)
 
 target_sources(
   ${PROJECT_NAME} # The library target name
@@ -147,10 +146,16 @@ if(${PROJECT_NAME}_build_executable)
   generate_buildinfo_header(${header_buildinfo_bin})
 
   # Establish dependency: executable target requires header generation
-  add_dependencies(${project_name_copy}_exe header_buildinfo_bin)
+  add_dependencies(
+    ${project_name_copy}_exe
+    ${project_name_copy}_header_buildinfo_bin
+  )
 
   # Create custom target for explicit executable header building
-  add_custom_target(header_buildinfo_bin DEPENDS ${header_buildinfo_bin})
+  add_custom_target(
+    ${project_name_copy}_header_buildinfo_bin
+    DEPENDS ${header_buildinfo_bin}
+  )
 
   # Integrate header into executable target's source set
   target_sources(

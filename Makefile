@@ -52,7 +52,7 @@ coverage: ## check code coverage quickly GCC
 	cmake -Bbuild -DCMAKE_INSTALL_PREFIX=$(INSTALL_LOCATION) \
 		-D$(PROJECT_NAME)_ENABLE_CODE_COVERAGE=1
 	cmake --build build --config Release
-	cmake --build build --target coverage
+	cmake --build build --target $(PROJECT_NAME)_coverage
 
 docs: ## generate Doxygen HTML documentation, including API docs
 	rm -rf docs/

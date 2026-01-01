@@ -38,18 +38,21 @@ foreach(file ${test_sources})
   string(REGEX REPLACE "(.*/)([a-zA-Z0-9_ ]+)(\.cpp)$" "\\2" test_name ${file})
 
   # Creates a dedicated executable target for each test file.
-  add_executable(${test_name}_Tests ${file})
+  add_executable(${project_name_copy}_${test_name}_Tests ${file})
 
   # Enforces C++17 standard compliance for all test executables, ensuring
   # consistency with the main project's language requirements. The PUBLIC
   # visibility propagates this requirement to any dependent targets (though test
   # executables typically have no dependents).
-  target_compile_features(${test_name}_Tests PUBLIC cxx_std_17)
+  target_compile_features(
+    ${project_name_copy}_${test_name}_Tests
+    PUBLIC cxx_std_17
+  )
 
   # Applies the project-wide compiler warning configuration (defined in
   # compiler_warnings.cmake) to the test executable. This ensures test code
   # maintains the same quality standards as production code.
-  set_project_warnings("${test_name}_Tests")
+  set_project_warnings("${project_name_copy}_${test_name}_Tests")
 
   # ----------------------------------------------------------------------------
   # Testing Framework Selection and Integration
@@ -69,7 +72,7 @@ foreach(file ${test_sources})
 
     # Link test executable against required libraries:
     target_link_libraries(
-      ${test_name}_Tests
+      ${project_name_copy}_${test_name}_Tests
       PUBLIC
         GTest::GTest # GoogleTest core framework
         ${_google_mock_libraries} # Optional GoogleMock libraries
@@ -80,7 +83,7 @@ foreach(file ${test_sources})
     # but provides architectural support for alternative frameworks.
     find_package(Catch2 REQUIRED)
     target_link_libraries(
-      ${test_name}_Tests
+      ${project_name_copy}_${test_name}_Tests
       PUBLIC
         Catch2::Catch2 # Catch2 testing framework
         ${project_name_copy} # Main project library under test
@@ -103,7 +106,10 @@ foreach(file ${test_sources})
   # execution via `ctest` command or IDE test runners. The NAME parameter
   # defines the test label in CTest reports, while COMMAND specifies the
   # executable to execute.
-  add_test(NAME ${test_name} COMMAND ${test_name}_Tests)
+  add_test(
+    NAME ${project_name_copy}_${test_name}
+    COMMAND ${project_name_copy}_${test_name}_Tests
+  )
 
   # Applies compiler/linker instrumentation for code coverage if enabled. This
   # function tailors flags based on library type (header-only/static/shared)
