@@ -3,11 +3,13 @@
 
 #include <iostream>
 
+#include <project/export.hpp>
+
 namespace tmp {
 
-int add(int left, int right);
+PROJECT_EXPORT int add(int left, int right);
 
-void DumpBuildInfo(std::ostream& ostream = std::cout);
+PROJECT_EXPORT void DumpBuildInfo(std::ostream& ostream = std::cout);
 
 }  // namespace tmp
 

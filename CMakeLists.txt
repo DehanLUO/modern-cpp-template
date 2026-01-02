@@ -117,6 +117,7 @@ if(${PROJECT_NAME}_build_headers_only)
         FILES
           ${public_headers} # Public API headers
           ${header_version} # Generated version header
+          ${header_export} # Generated export header
   )
 else()
   # Static or shared library with compiled implementation
@@ -139,6 +140,7 @@ else()
         FILES
           ${public_headers} # Public API headers
           ${header_version} # Generated version header
+          ${header_export} # Generated export header
     PRIVATE
       ${library_sources} # Implementation sources
   )
@@ -199,6 +201,26 @@ else()
 endif()
 
 message(STATUS "C++17 standard enforced")
+
+# ------------------------------------------------------------------------------
+# Static Library Build Macro
+# ------------------------------------------------------------------------------
+# Defines PROJECT_STATIC_DEFINE when the library is built as a static library
+# (i.e., when BUILD_SHARED_LIBS is OFF and the target contains compiled sources).
+# This macro informs the export header that symbol import/export specifiers
+# (such as __declspec or visibility attributes) should be disabled, ensuring
+# correct compilation and linking in static library mode across all platforms.
+#
+# Note: This definition is intentionally skipped for INTERFACE libraries as such
+# targets do not produce object code and are never linked directly. Consequently,
+# they do not participate in symbol export/import logic and should not define
+# PROJECT_STATIC_DEFINE.
+if(NOT ${PROJECT_NAME}_build_headers_only)
+  target_compile_definitions(
+    ${PROJECT_NAME}
+    PUBLIC "$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:PROJECT_STATIC_DEFINE>"
+  )
+endif()
 
 # ------------------------------------------------------------------------------
 # Compiler Warning Configuration
@@ -301,9 +323,9 @@ install(
 
 verbose_message("Package configuration files generated")
 
-# ------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Build Information Header Generation
-# ------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Uses CMake's `configure_file` command to process a template file containing
 # version information (e.g., major/minor/patch numbers). The `@ONLY` parameter
 # restricts variable substitution to variables marked with `@VARIABLE@` syntax
@@ -316,21 +338,40 @@ include(${cmake_buildinfo})
 # ------------------------------------------------------------------------------
 # Export Header Generation (Optional)
 # ------------------------------------------------------------------------------
-# Creates symbol visibility export header for shared libraries
+# The generated header is only created if ${PROJECT_NAME}_GENERATE_EXPORT_HEADER
+# is enabled (typically ON for libraries with compiled sources, OFF for
+# header-only or INTERFACE targets).
 if(${PROJECT_NAME}_GENERATE_EXPORT_HEADER)
+  # Conditionally generates a platform-aware export header (e.g., project_export.h)
+  # using CMake's GenerateExportHeader module. This header defines macros such as
+  # PROJECT_EXPORT to handle symbol visibility on Windows (__declspec) and
+  # Unix-like systems (__attribute__((visibility(...)))), enabling correct
+  # import/export behavior for shared libraries.
   include(GenerateExportHeader)
   generate_export_header(${PROJECT_NAME})
-  install(
-    FILES ${PROJECT_BINARY_DIR}/${project_name_lowercase}_export.h
-    DESTINATION include
-  )
 
-  message(STATUS "Export header generated: ${project_name_lowercase}_export.h")
+  # Avoid unnecessary file I/O by checking if the destination header already
+  # exists. This is especially useful in iterative development where CMake
+  # re-runs frequently.
+  if(NOT EXISTS ${header_export})
+    # Copy the auto-generated export header to the designated output path. Using
+    # execute_process ensures the copy occurs at configure time (not generate
+    # time), aligning with the timing of generate_export_header's output.
+    execute_process(
+      COMMAND
+        ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/${project_name_lowercase}_export.h
+        ${header_export}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+
+    message(STATUS "Export header generated: ${header_export}")
+  endif()
 endif()
 
-# ------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Documentation Generation (Optional)
-# ------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Configures Doxygen if enabled in project options
 if(${PROJECT_NAME}_ENABLE_DOXYGEN)
   include(${cmake_doxygen})

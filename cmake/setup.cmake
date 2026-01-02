@@ -140,13 +140,13 @@ set(dir_binary_include ${dir_binary}/include)
 
 # Project-specific generated include directory
 # Format: <build_dir>/include/<project_name_lowercase>
-set(
-  dir_binary_include_${project_name_lowercase}
-  ${dir_binary_include}/${project_name_lowercase}
-)
+set(dir_binary_include_project ${dir_binary_include}/${project_name_lowercase})
 
 # Generated version header file path
-set(header_version ${dir_binary_include_${project_name_lowercase}}/version.hpp)
+set(header_version ${dir_binary_include_project}/version.hpp)
+
+# Generated export header file path
+set(header_export ${dir_binary_include_project}/export.hpp)
 
 # ------------------------------------------------------------------------------
 # Data and Source Code Directories (Build-time)
@@ -240,10 +240,7 @@ set(dir_include ${dir_root}/include)
 
 # Project-specific public header directory
 # Format: include/<project_name_lowercase>/
-set(
-  dir_include_${project_name_lowercase}
-  ${dir_include}/${project_name_lowercase}
-)
+set(dir_include_project ${dir_include}/${project_name_lowercase})
 
 # Test source directory: Contains unit test implementation files
 set(dir_testsrc ${dir_root}/test/src)

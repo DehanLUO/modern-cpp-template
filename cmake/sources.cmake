@@ -50,7 +50,7 @@ set(
 # installation.
 set(
   public_headers # OUTPUT: Public interface header files
-  ${dir_include_${project_name_lowercase}}/tmp.hpp
+  ${dir_include_project}/tmp.hpp
 )
 
 # ------------------------------------------------------------------------------

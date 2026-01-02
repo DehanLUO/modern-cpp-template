@@ -148,8 +148,8 @@ option(
 option(
   ${PROJECT_NAME}_GENERATE_EXPORT_HEADER
   "Generate export header for controlling symbol visibility."
-  OFF
-) # TODO:
+  ON
+)
 
 # ------------------------------------------------------------------------------
 # Shared Library Symbol Visibility
