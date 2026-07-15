@@ -172,13 +172,17 @@ option(
 ) # TODO:
 
 if(${PROJECT_NAME}_ENABLE_LTO)
-  include(CheckIPOSupported) # CMake module for LTO detection
-  check_ipo_supported(RESULT result OUTPUT output) # Test compiler support
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT result OUTPUT output)
 
   if(result)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE) # Enable globally
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    log_info("Link-Time Optimization (LTO) enabled")
   else()
-    message(SEND_ERROR "LTO unsupported by compiler: ${output}")
+    if("${output}" STREQUAL "")
+      set(output "(no diagnostic output provided)")
+    endif()
+    log_err("LTO unsupported by compiler: ${output}")
   endif()
 endif()
 
@@ -192,12 +196,14 @@ option(
   ON
 ) # TODO:
 
-find_program(CCACHE_FOUND ccache) # Detect ccache installation
+find_program(CCACHE_FOUND ccache)
 
 if(CCACHE_FOUND)
-  # Intercept compile and link commands globally
   set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
   set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+  log_info("Compilation cache (ccache) enabled: ${CCACHE_FOUND}")
+else()
+  log_debug("ccache not found in PATH")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -211,6 +217,7 @@ option(
 ) # TODO:
 
 if(${PROJECT_NAME}_ENABLE_ASAN)
-  add_compile_options(-fsanitize=address) # Compile with ASan instrumentation
-  add_link_options(-fsanitize=address) # Link with ASan runtime
+  add_compile_options(-fsanitize=address)
+  add_link_options(-fsanitize=address)
+  log_info("AddressSanitizer (ASan) enabled")
 endif()

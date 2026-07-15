@@ -10,15 +10,12 @@ if(${PROJECT_NAME}_ENABLE_CONAN)
   # If `conan.cmake` (from https://github.com/conan-io/cmake-conan) does not exist, download it.
   #
   if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
-    message(
-      STATUS
-      "Downloading conan.cmake from https://github.com/conan-io/cmake-conan..."
-    )
+    log_info("Downloading conan.cmake from https://github.com/conan-io/cmake-conan...")
     file(
       DOWNLOAD "https://github.com/conan-io/cmake-conan/raw/v0.15/conan.cmake"
       "${CMAKE_BINARY_DIR}/conan.cmake"
     )
-    message(STATUS "Cmake-Conan downloaded succesfully.")
+    log_info("CMake-Conan downloaded successfully")
   endif()
 
   include(${CMAKE_BINARY_DIR}/conan.cmake)
@@ -38,5 +35,7 @@ if(${PROJECT_NAME}_ENABLE_CONAN)
 
   conan_basic_setup()
 
-  verbose_message("Conan is setup and all requires have been installed.")
+  log_info("Conan is set up and all requires have been installed")
+else()
+  log_debug("Conan integration disabled")
 endif()

@@ -63,3 +63,9 @@ set(
   test_sources # OUTPUT: Unit test implementation source files
   ${dir_testsrc}/tmp_test.cpp
 )
+
+log_info("Source file variables defined")
+log_debug("  library_sources  = ${library_sources}")
+log_debug("  exe_sources      = ${exe_sources}")
+log_debug("  public_headers   = ${public_headers}")
+log_debug("  test_sources     = ${test_sources}")

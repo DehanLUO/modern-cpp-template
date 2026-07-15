@@ -4,20 +4,12 @@
 # Applies compiler flags required to enable accurate source-level code coverage.
 # These flags ensure debuggability and prevent optimization-induced distortion.
 macro(apply_coverage_compile_flags target)
+  log_debug("Applying coverage compile flags to target: ${target}")
   target_compile_options(
     ${target}
     PRIVATE
-      # Disables all compiler optimizations. This preservesa direct mapping
-      # between source lines and emitted instructions, which is essential for
-      # precise line coverage attribution.
       -O0
-      # Embeds debugging symbols (e.g., DWARF) into object files, enabling
-      # coverage tools to correlate runtime execution counts with specific
-      # source locations.
       -g
-      # Appends compiler-specific instrumentation flags (e.g., -fprofile-arcs
-      # for GCC or -fprofile-instr- generate for Clang) that activate profiling
-      # data emission during compilation.
       ${coverage_compile_options}
   )
 endmacro()
@@ -28,11 +20,9 @@ endmacro()
 # Applies linker flags necessary to resolve runtime dependencies of the coverage
 # instrumentation infrastructure. The visibility controls propagation semantics.
 macro(apply_coverage_link_flags target visibility)
-  # Links against the coverage runtime library (e.g., libgcov for GCC). The
-  # chosen visibility determines whether dependent targets inherit this linkage:
-  #   - PRIVATE: dependency is internal (suitable for shared libraries).
-  #   - PUBLIC:  dependency is exported (required for static libraries, as they
-  #              do not undergo final linking and cannot resolve symbols alone).
+  log_debug(
+    "Applying coverage link flags to target: ${target} (visibility: ${visibility})"
+  )
   target_link_options(${target} ${visibility} ${coverage_link_options})
 endmacro()
 
@@ -44,31 +34,22 @@ endmacro()
 # Ensures correct symbol resolution and minimizes manual configuration overhead.
 function(configure_code_coverage_instrumentation)
   if(NOT ${project_name_copy}_ENABLE_CODE_COVERAGE)
-    return() # Early exit if coverage is globally disabled.
+    return()
   endif()
 
   if(${project_name_copy}_build_headers_only)
-    # Header-only libraries contain no compiled object files; all implementation
-    # resides in headers and is instantiated within the test executable’s
-    # translation unit. Thus, instrumentation must be applied to the test target.
+    log_debug("Applying coverage instrumentation to test target (header-only library)")
     apply_coverage_compile_flags(${project_name_copy}_${test_name}_Tests)
     apply_coverage_link_flags(${project_name_copy}_${test_name}_Tests PRIVATE)
   else()
-    # Compiled libraries (STATIC/SHARED) contain actual object code and must be
-    # instrumented directly at the library level.
+    log_debug("Applying coverage instrumentation to library target")
     apply_coverage_compile_flags(${project_name_copy})
 
-    # Linker flag visibility depends on library linkage model:
     if(BUILD_SHARED_LIBS)
-      # Shared libraries are fully linked at build time and must resolve
-      # coverage runtime symbols (e.g., __llvm_gcda_emit_function) internally.
+      log_debug("Library is SHARED — coverage link flags applied as PRIVATE")
       apply_coverage_link_flags(${project_name_copy} PRIVATE)
     else()
-      # Static libraries are archives of unlinked objects. Final symbol
-      # resolution occurs only when linked into an executable. Propagating the
-      # coverage runtime dependency via PUBLIC ensures all consumers (e.g., test
-      # runners) automatically satisfy symbol requirements without explicit
-      # configuration.
+      log_debug("Library is STATIC — coverage link flags applied as PUBLIC")
       apply_coverage_link_flags(${project_name_copy} PUBLIC)
     endif()
   endif()
@@ -108,17 +89,11 @@ function(set_coverage_target)
   endif()
 
   if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-    # Matches both "Clang" and "AppleClang". Delegates to Clang-specific workflow.
     set_clang_coverage_target()
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # GNU GCC detected. Delegates to GCC/gcov workflow.
     set_gcc_coverage_target()
   else()
-    # Unsupported compiler. Emit a non-fatal warning to inform developers.
-    message(
-      AUTHOR_WARNING
-      "No coverage configured for '${CMAKE_CXX_COMPILER_ID}' compiler."
-    )
+    log_warn("No coverage configured for '${CMAKE_CXX_COMPILER_ID}' compiler.")
   endif()
 endfunction()
 
@@ -130,15 +105,16 @@ endfunction()
 function(set_clang_coverage_target)
   find_program(LLVM_PROFDATA llvm-profdata)
   if(NOT LLVM_PROFDATA)
-    message(WARNING "llvm-profdata not found; skipping Clang coverage target.")
+    log_warn("llvm-profdata not found; skipping Clang coverage target.")
     return()
   endif()
 
   find_program(LLVM_COV llvm-cov)
   if(NOT LLVM_COV)
-    message(WARNING "llvm-cov not found; skipping Clang coverage target.")
+    log_warn("llvm-cov not found; skipping Clang coverage target.")
     return()
   endif()
+  log_info("LLVM coverage tools found: llvm-profdata, llvm-cov")
 
   add_custom_target(
     ${project_name_copy}_coverage
@@ -165,10 +141,7 @@ function(set_clang_coverage_target)
     VERBATIM # Prevents CMake from adding shell quoting.
   )
 
-  message(
-    STATUS
-    "Added LLVM-based coverage target: ${project_name_copy}_coverage"
-  )
+  log_info("Added LLVM-based coverage target: ${project_name_copy}_coverage")
 endfunction()
 
 # ------------------------------------------------------------------------------
@@ -179,21 +152,22 @@ endfunction()
 function(set_gcc_coverage_target)
   find_program(GCOV gcov)
   if(NOT GCOV)
-    message(WARNING "gcov not found; skipping GCC coverage target.")
+    log_warn("gcov not found; skipping GCC coverage target.")
     return()
   endif()
 
   find_program(FIND find)
   if(NOT FIND)
-    message(WARNING "find utility not found; skipping GCC coverage target.")
+    log_warn("find utility not found; skipping GCC coverage target.")
     return()
   endif()
 
   find_program(BASH bash)
   if(NOT BASH)
-    message(WARNING "bash not found; skipping GCC coverage target.")
+    log_warn("bash not found; skipping GCC coverage target.")
     return()
   endif()
+  log_info("GCC coverage tools found: gcov, find, bash")
 
   add_custom_target(
     ${project_name_copy}_coverage
@@ -216,10 +190,7 @@ function(set_gcc_coverage_target)
     VERBATIM
   )
 
-  message(
-    STATUS
-    "Added GCC-based coverage target: ${project_name_copy}_coverage"
-  )
+  log_info("Added GCC-based coverage target: ${project_name_copy}_coverage")
 endfunction()
 
 # ------------------------------------------------------------------------------
@@ -228,8 +199,10 @@ endfunction()
 # Sets instrumentation flags based on the detected C++ compiler. This block must
 # execute before any call to configure_code_coverage_instrumentation.
 if(NOT ${project_name_copy}_ENABLE_CODE_COVERAGE)
-  return() # Exit early if coverage is disabled.
+  log_debug("Code coverage instrumentation disabled")
+  return()
 endif()
+log_info("Code coverage instrumentation enabled")
 
 # Initialises the list of coverage executables to an empty value before any test
 # targets append their corresponding executable paths.
@@ -256,21 +229,15 @@ set(
 )
 
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-  # Clang or AppleClang compiler detected (MATCHES handles both "Clang" and
-  # "AppleClang")
   set(coverage_compile_options ${_clang_compile_options})
   set(coverage_link_options ${_clang_link_options})
+  log_info("Coverage flags configured for Clang")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # GNU GCC compiler detected
   set(coverage_compile_options ${_gcc_compile_options})
   set(coverage_link_options ${_gcc_link_options})
+  log_info("Coverage flags configured for GCC")
 else()
-  # Unsupported compiler detected - issue developer warning but continue
-  # configuration
-  message(
-    AUTHOR_WARNING
-    "No coverage configured for '${CMAKE_CXX_COMPILER_ID}' compiler."
-  )
+  log_warn("No coverage configured for '${CMAKE_CXX_COMPILER_ID}' compiler.")
 endif()
 
 # Clean up temporary variables to avoid polluting global scope.

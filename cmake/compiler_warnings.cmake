@@ -59,12 +59,19 @@ function(set_project_warnings project_name)
   endif()
 
   # Special handling for executable targets in non-unit-test contexts
-  # Executable targets may have a different naming convention (suffix _exe)
   if(NOT ${_is_unit_test} AND ${project_name_copy}_build_executable)
-    target_compile_options(
-      ${project_name}_exe # Executable target name (assumes _exe suffix convention)
-      PRIVATE ${project_warnings}
-    )
+    if(NOT TARGET ${project_name}_exe)
+      log_warn(
+        "Executable target '${project_name}_exe' does not exist; "
+        "skipping compiler warnings for executable."
+      )
+    else()
+      target_compile_options(
+        ${project_name}_exe
+        PRIVATE ${project_warnings}
+      )
+      log_info("Applied compiler warnings to executable: ${project_name}_exe")
+    endif()
   endif()
 endfunction()
 
@@ -146,24 +153,21 @@ set(
 # Determine the active C++ compiler and select the appropriate warning set.
 # CMake provides built-in variables for compiler identification.
 if(MSVC)
-  # MSVC compiler detected (including Visual Studio 2015+ and cl.exe)
   set(project_warnings ${_msvc_warnings})
+  log_info("Compiler warnings selected for MSVC")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-  # Clang or AppleClang compiler detected (MATCHES handles both "Clang" and "AppleClang")
   set(project_warnings ${_clang_warnings})
+  log_info("Compiler warnings selected for Clang/AppleClang")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # GNU GCC compiler detected
   set(project_warnings ${_gcc_warnings})
+  log_info("Compiler warnings selected for GCC")
 else()
-  # Unsupported compiler detected - issue developer warning but continue configuration
-  message(
-    AUTHOR_WARNING # Only shown during CMake configuration, not during builds
+  log_warn(
     "No compiler warnings configured for '${CMAKE_CXX_COMPILER_ID}' compiler."
   )
 endif()
 
-# Remove temporary warning set variables to prevent namespace pollution and
-# potential variable shadowing in parent scopes.
+# Remove temporary warning set variables to prevent namespace pollution
 unset(_msvc_warnings)
 unset(_clang_warnings)
 unset(_gcc_warnings)

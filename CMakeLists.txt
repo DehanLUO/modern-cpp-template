@@ -21,6 +21,14 @@ cmake_minimum_required(VERSION 3.28)
 # - Update the PROJECT_NAME variable in ./Makefile (e.g., PROJECT_NAME := MyLib)
 # Failure to synchronize these will break builds, tests, and documentation
 # generation.
+
+# ------------------------------------------------------------------------------
+# MSVC Runtime Library Configuration (MUST precede project() call)
+# ------------------------------------------------------------------------------
+# Per CMake policy CMP0091, this must be set before the first project()
+# call to take effect. Controls the C runtime library linkage for MSVC.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 project("Project" VERSION 0.1.0 LANGUAGES CXX)
 
 # ------------------------------------------------------------------------------
@@ -39,16 +47,30 @@ endif()
 # Project Configuration Initialization
 # ------------------------------------------------------------------------------
 # Loads core configuration modules in logical sequence:
-# 1. setup.cmake: Project variables, directory structure, source lists
-# 2. utils.cmake: Helper functions (verbose_message, etc.)
-# 3. config.cmake: Compiler flags, policies, build options
-# 4. static_analysis.cmake: Code analysis tool integration
+# 1. logging.cmake: Hierarchical logging system (must load first)
+# 2. setup.cmake: Project variables, directory structure, source lists
+# 3. utils.cmake: Helper functions (verbose_message, etc.)
+# 4. config.cmake: Compiler flags, policies, build options
+# 5. static_analysis.cmake: Code analysis tool integration
+include(cmake/logging.cmake) # Hierarchical logging system
+log_info("Logging system initialized — level: ${${PROJECT_NAME}_LOG_LEVEL}")
+log_info("Build directory sanity check passed")
+
 include(cmake/setup.cmake) # Project foundation setup
+log_info("Loaded module: setup.cmake")
+
 include(${cmake_utils}) # Utility functions
+log_info("Loaded module: utils.cmake")
+
 include(${cmake_config}) # Compiler and policy configuration
+log_info("Loaded module: config.cmake")
+
 # Static analysis tools
 include(${cmake_clang_tidy})
+log_info("Loaded module: clang_tidy.cmake")
+
 include(${cmake_cppcheck})
+log_info("Loaded module: cppcheck.cmake")
 
 verbose_message("Configuration modules loaded successfully")
 
@@ -59,10 +81,12 @@ verbose_message("Configuration modules loaded successfully")
 # or cache. Single-configuration generators require explicit type.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
-  message(STATUS "Default build type set to: ${CMAKE_BUILD_TYPE}")
+  log_info("Default build type set to: ${CMAKE_BUILD_TYPE}")
+else()
+  log_info("Build type: ${CMAKE_BUILD_TYPE}")
 endif()
 
-message(STATUS "Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
+log_info("Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
 
 # ------------------------------------------------------------------------------
 # Platform-Specific Debug Macro
@@ -71,6 +95,7 @@ message(STATUS "Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
 # providing parity with MSVC's automatic _DEBUG definition.
 if(UNIX)
   add_compile_options("$<$<CONFIG:DEBUG>:-D_DEBUG>")
+  log_info("Platform: UNIX — enabled _DEBUG macro for Debug configuration")
 endif(UNIX)
 
 # ------------------------------------------------------------------------------
@@ -79,7 +104,14 @@ endif(UNIX)
 # Conditionally includes package manager modules based on configuration.
 # These modules handle dependency resolution via Conan or vcpkg.
 include(${cmake_conan}) # Conan package manager support
+if(${PROJECT_NAME}_ENABLE_CONAN)
+  log_info("Package manager: Conan enabled")
+endif()
+
 include(${cmake_vcpkg}) # vcpkg package manager support
+if(${PROJECT_NAME}_ENABLE_VCPKG)
+  log_info("Package manager: vcpkg enabled")
+endif()
 
 # ------------------------------------------------------------------------------
 # Source File Discovery and Registration
@@ -100,7 +132,7 @@ verbose_message("Source file variables defined")
 if(${PROJECT_NAME}_build_headers_only)
   # Header-only INTERFACE library: contains only headers, no compiled code
   add_library(${PROJECT_NAME} INTERFACE)
-  message(STATUS "Created INTERFACE library target: ${PROJECT_NAME}")
+  log_info("Created INTERFACE library target: ${PROJECT_NAME}")
 
   # List headers for developer visibility in verbose mode
   verbose_list_message(public_headers)
@@ -122,7 +154,7 @@ if(${PROJECT_NAME}_build_headers_only)
 else()
   # Static or shared library with compiled implementation
   add_library(${PROJECT_NAME})
-  message(STATUS "Created library target: ${PROJECT_NAME}")
+  log_info("Created library target: ${PROJECT_NAME}")
 
   # Display source file listings for verification
   verbose_list_message(public_headers)
@@ -144,14 +176,16 @@ else()
     PRIVATE
       ${library_sources} # Implementation sources
   )
+  log_info("Configured target sources for library: ${PROJECT_NAME}")
 
   # Create executable target if configured
   if(${PROJECT_NAME}_build_executable)
     add_executable(${PROJECT_NAME}_exe)
-    message(STATUS "Created executable target: ${PROJECT_NAME}_exe")
+    log_info("Created executable target: ${PROJECT_NAME}_exe")
 
     verbose_list_message(exe_sources)
     target_sources(${PROJECT_NAME}_exe PRIVATE ${exe_sources})
+    log_info("Configured target sources for executable: ${PROJECT_NAME}_exe")
   endif()
 endif()
 
@@ -200,7 +234,7 @@ else()
   endif()
 endif()
 
-message(STATUS "C++17 standard enforced")
+log_info("C++17 standard enforced for all targets")
 
 # ------------------------------------------------------------------------------
 # Static Library Build Macro
@@ -244,9 +278,6 @@ if(${PROJECT_NAME}_build_executable)
   target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME})
 endif()
 
-# Configure MSVC runtime library (ignored on other platforms)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-
 verbose_message("Dependencies linked successfully")
 
 # ------------------------------------------------------------------------------
@@ -254,6 +285,7 @@ verbose_message("Dependencies linked successfully")
 # ------------------------------------------------------------------------------
 # Defines rules for installing targets, headers, and CMake package files
 include(GNUInstallDirs) # Standard installation directory variables
+log_info("GNUInstallDirs loaded: prefix=${CMAKE_INSTALL_PREFIX}")
 
 # Install library target with export set for downstream consumption
 install(
@@ -273,6 +305,7 @@ install(
     DESTINATION
       include # Install headers
 )
+log_info("Installation rules configured for library target")
 
 # Install executable if present
 if(${PROJECT_NAME}_build_executable)
@@ -280,6 +313,7 @@ if(${PROJECT_NAME}_build_executable)
     TARGETS ${PROJECT_NAME}_exe
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
+  log_info("Installation rules configured for executable target")
 endif()
 
 # Install export set for find_package() compatibility
@@ -290,6 +324,7 @@ install(
     ${PROJECT_NAME}:: # Namespace for imported targets
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
+log_info("Export set installed to: ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 
 verbose_message("Installation rules configured")
 
@@ -305,6 +340,7 @@ write_basic_package_version_file(
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
 )
+log_info("Generated package version file: ${PROJECT_NAME}ConfigVersion.cmake")
 
 # Main package configuration file from template
 configure_package_config_file(
@@ -312,6 +348,7 @@ configure_package_config_file(
   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake # Output file
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
+log_info("Generated package config file: ${PROJECT_NAME}Config.cmake")
 
 # Install both package configuration files
 install(
@@ -320,6 +357,7 @@ install(
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
+log_info("Package config files installed")
 
 verbose_message("Package configuration files generated")
 
@@ -331,9 +369,11 @@ verbose_message("Package configuration files generated")
 # restricts variable substitution to variables marked with `@VARIABLE@` syntax
 # in the template, providing precise control over the substitution process.
 configure_file(${hppin_version} ${header_version} @ONLY)
+log_info("Generated version header: ${header_version}")
 
 # Generates build-time metadata headers (timestamp, compiler, git info)
 include(${cmake_buildinfo})
+log_info("Loaded module: buildinfo.cmake")
 
 # ------------------------------------------------------------------------------
 # Export Header Generation (Optional)
@@ -349,6 +389,7 @@ if(${PROJECT_NAME}_GENERATE_EXPORT_HEADER)
   # import/export behavior for shared libraries.
   include(GenerateExportHeader)
   generate_export_header(${PROJECT_NAME})
+  log_info("Generated export header via GenerateExportHeader")
 
   # Avoid unnecessary file I/O by checking if the destination header already
   # exists. This is especially useful in iterative development where CMake
@@ -365,8 +406,12 @@ if(${PROJECT_NAME}_GENERATE_EXPORT_HEADER)
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
-    message(STATUS "Export header generated: ${header_export}")
+    log_info("Export header copied to: ${header_export}")
+  else()
+    log_debug("Export header already exists, skipping copy: ${header_export}")
   endif()
+else()
+  log_debug("Export header generation disabled")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -375,6 +420,9 @@ endif()
 # Configures Doxygen if enabled in project options
 if(${PROJECT_NAME}_ENABLE_DOXYGEN)
   include(${cmake_doxygen})
+  log_info("Doxygen documentation generation enabled")
+else()
+  log_debug("Doxygen documentation generation disabled")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -383,7 +431,11 @@ endif()
 # Enables and configures unit testing if requested
 if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
   enable_testing() # Activates CMake's testing subsystem
+  log_info("Unit testing enabled — CTest subsystem activated")
   add_subdirectory(test) # Recursively process test/CMakeLists.txt
+  log_info("Added test subdirectory")
+else()
+  log_debug("Unit testing disabled")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -394,4 +446,7 @@ endif()
 if(${PROJECT_NAME}_ENABLE_CODE_FORMAT)
   include(${cmake_format})
   add_clang_format_target()
+  log_info("Code formatting target 'clang-format' registered")
+else()
+  log_debug("Code formatting disabled")
 endif()

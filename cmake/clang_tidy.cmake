@@ -36,16 +36,10 @@ find_program(CLANGTIDY clang-tidy)
 # executable (resulting in CLANGTIDY being evaluated as NOT TRUE), issue a fatal
 # error message and terminate configuration.
 if(NOT CLANGTIDY)
-  # The SEND_ERROR severity level halts configuration generation but allows
-  # CMake to continue processing other parts of the script
-  message(
-    SEND_ERROR
-    "Clang-Tidy was requested but the executable could not be found."
-  )
-
-  # Exit the configuration block since the required tool is unavailable
+  log_err("Clang-Tidy was requested but the executable could not be found.")
   return()
 endif()
+log_info("Found Clang-Tidy: ${CLANGTIDY}")
 
 # Initialize a temporary CMake list variable that will accumulate regular
 # expression patterns for directory filtering. The variable is explicitly set to
@@ -101,6 +95,4 @@ set(
   "--quiet"
 )
 
-# Informational message confirming successful configuration completion.
-# This appears during CMake configuration phase to provide user feedback.
-message("Clang-Tidy finished setting up.")
+log_info("Clang-Tidy finished setting up")

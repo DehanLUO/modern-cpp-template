@@ -61,41 +61,44 @@ foreach(file ${test_sources})
   # variables. This conditional structure allows flexible framework selection
   # while maintaining consistent integration patterns.
 
-  if(${project_name_copy}_USE_GTEST) # Google Test Framework Configuration
-    # Locate and validate GoogleTest package installation.
+  # Validate mutually exclusive framework selection
+  if(${project_name_copy}_USE_GTEST AND ${project_name_copy}_USE_CATCH2)
+    log_warn(
+      "Both USE_GTEST and USE_CATCH2 are enabled. Defaulting to GoogleTest. "
+      "Explicitly disable one to avoid ambiguity."
+    )
+  endif()
+
+  if(${project_name_copy}_USE_GTEST)
+    log_info("Configuring test '${test_name}' with GoogleTest framework")
     find_package(GTest REQUIRED)
 
-    # Optional GoogleMock integration for mocking capabilities.
     if(${project_name_copy}_USE_GOOGLE_MOCK)
       set(_google_mock_libraries GTest::gmock GTest::gmock_main)
+      log_info("GoogleMock integration enabled for '${test_name}'")
     endif()
 
-    # Link test executable against required libraries:
     target_link_libraries(
       ${project_name_copy}_${test_name}_Tests
       PUBLIC
-        GTest::GTest # GoogleTest core framework
-        ${_google_mock_libraries} # Optional GoogleMock libraries
-        ${project_name_copy} # Main project library under test
+        GTest::GTest
+        ${_google_mock_libraries}
+        ${project_name_copy}
     )
-  elseif(${project_name_copy}_USE_CATCH2) # Catch2 Framework Configuration
-    # TODO: This branch is documented as untested in the current implementation
-    # but provides architectural support for alternative frameworks.
+  elseif(${project_name_copy}_USE_CATCH2)
+    log_info("Configuring test '${test_name}' with Catch2 framework")
     find_package(Catch2 REQUIRED)
     target_link_libraries(
       ${project_name_copy}_${test_name}_Tests
       PUBLIC
-        Catch2::Catch2 # Catch2 testing framework
-        ${project_name_copy} # Main project library under test
+        Catch2::Catch2
+        ${project_name_copy}
     )
   else()
-    # Configuration validation: Ensure at least one testing framework is selected.
-    message(
-      FATAL_ERROR
+    log_fatal(
       "No valid testing framework configured for project ${project_name_copy}. "
       "Please select a testing framework by setting either "
       "${project_name_copy}_USE_GTEST or ${project_name_copy}_USE_CATCH2 to ON."
-      ""
     )
   endif()
 
@@ -110,18 +113,13 @@ foreach(file ${test_sources})
     NAME ${project_name_copy}_${test_name}
     COMMAND ${project_name_copy}_${test_name}_Tests
   )
+  log_info("Registered CTest entry: ${project_name_copy}_${test_name}")
 
-  # Applies compiler/linker instrumentation for code coverage if enabled. This
-  # function tailors flags based on library type (header-only/static/shared)
-  # and compiler (GCC/Clang), ensuring correct profiling data generation.
   configure_code_coverage_instrumentation()
 endforeach()
 
-# Defines a top-level `coverage` custom target that orchestrates test execution,
-# data collection, merging, and reporting—adapted to the active compiler.
 set_coverage_target()
 
-# Configuration Completion Notification
 verbose_message(
   "Unit test configuration completed for project: ${project_name_copy}"
 )

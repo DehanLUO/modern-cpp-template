@@ -97,14 +97,23 @@ string(TOUPPER ${PROJECT_NAME} project_name_uppercase)
 # Resolves the absolute path to the project root directory (parent of the
 # current script's location). This provides a stable reference point for all
 # subsequent relative path constructions.
+# Resolve project root with validation to handle edge cases in path resolution.
+set(_setup_cmake_dir "${CMAKE_CURRENT_LIST_DIR}")
+get_filename_component(_parent_dir "${_setup_cmake_dir}" DIRECTORY)
+file(TO_CMAKE_PATH "${_parent_dir}" _rel_root)
 file(
   REAL_PATH
-    "../" # Relative path to parent directory
-  dir_root # Output variable: absolute project root path
-  BASE_DIRECTORY
-    "${CMAKE_CURRENT_LIST_DIR}" # Start from this script's directory
-  EXPAND_TILDE # Expand ~ to home directory if present in path (CMake ≥3.28)
+    "${_rel_root}"
+  dir_root
+  EXPAND_TILDE
 )
+if(NOT dir_root OR NOT EXISTS "${dir_root}")
+  log_fatal(
+    "Failed to resolve project root directory from '${CMAKE_CURRENT_LIST_DIR}'. "
+    "Resolved to: '${dir_root}'. Ensure the cmake/ directory is inside the project."
+  )
+endif()
+log_info("Project root resolved: ${dir_root}")
 
 # ==============================================================================
 # Binary (Build) Directory Structure
@@ -174,6 +183,9 @@ set(header_buildinfo_bin ${dir_binary_src}/buildinfo_bin.hpp) # Executable build
 # Base directory for CMake module files
 set(dir_cmake ${dir_root}/cmake)
 
+# Logging system module (must be loaded before all other modules)
+set(cmake_logging ${dir_cmake}/logging.cmake)
+
 # Individual CMake module file paths with descriptive comments:
 
 # Build information generation module
@@ -234,9 +246,15 @@ set(hppin_version ${dir_cmake}/version.hpp.in)
 
 # Main source code directory: Contains C++ implementation files (.cpp, .cc)
 set(dir_src ${dir_root}/src)
+if(NOT EXISTS "${dir_src}")
+  log_warn("Source directory does not exist: ${dir_src}")
+endif()
 
 # Header file directory: Contains public header files (.h, .hpp, .hxx)
 set(dir_include ${dir_root}/include)
+if(NOT EXISTS "${dir_include}")
+  log_warn("Include directory does not exist: ${dir_include}")
+endif()
 
 # Project-specific public header directory
 # Format: include/<project_name_lowercase>/
@@ -244,3 +262,13 @@ set(dir_include_project ${dir_include}/${project_name_lowercase})
 
 # Test source directory: Contains unit test implementation files
 set(dir_testsrc ${dir_root}/test/src)
+
+log_info("Source directories configured")
+log_debug("  dir_src     = ${dir_src}")
+log_debug("  dir_include = ${dir_include}")
+log_debug("  dir_testsrc = ${dir_testsrc}")
+
+# Cleanup temporary path variables to prevent namespace pollution
+unset(_setup_cmake_dir)
+unset(_parent_dir)
+unset(_rel_root)
